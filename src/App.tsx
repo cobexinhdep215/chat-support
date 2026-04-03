@@ -90,8 +90,11 @@ interface ChatLog {
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{ uid: string; displayName: string; email: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'training' | 'customization' | 'logs' | 'sdk'>('dashboard');
@@ -113,19 +116,19 @@ export default function App() {
     }
   }, [isWidgetMode, widgetWorkspaceId]);
 
-  // Auth listener
+  // Local Auth Persistence
   useEffect(() => {
     if (isWidgetMode) return;
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsubscribe;
+    const savedUser = localStorage.getItem('doxe_ai_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
   }, [isWidgetMode]);
 
   // Workspaces listener
   useEffect(() => {
     if (!user || isWidgetMode) return;
+    // Since we're using mock auth, we'll fetch all workspaces or filter by ownerId 'admin'
     const q = query(collection(db, 'workspaces'), where('ownerId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const ws = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Workspace));
@@ -137,16 +140,22 @@ export default function App() {
     return unsubscribe;
   }, [user, isWidgetMode]);
 
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login failed", error);
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (username === 'admin' && password === 'admin@123') {
+      const mockUser = { uid: 'admin', displayName: 'Administrator', email: 'admin@doxeclub.com' };
+      setUser(mockUser);
+      localStorage.setItem('doxe_ai_user', JSON.stringify(mockUser));
+    } else {
+      setLoginError('Invalid username or password');
     }
   };
 
-  const handleLogout = () => signOut(auth);
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('doxe_ai_user');
+  };
 
   if (isWidgetMode) {
     if (!widgetWorkspace) return null;
@@ -171,23 +180,47 @@ export default function App() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center"
+          className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8"
         >
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Car className="text-white w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">DoxeAI</h1>
-          <p className="text-slate-600 mb-8">
-            The ultimate AI chatbot for car tuning & accessories. 
-            Manage your workspaces and train your bot in minutes.
+          <h1 className="text-3xl font-bold text-slate-900 mb-2 text-center">DoxeAI Admin</h1>
+          <p className="text-slate-600 mb-8 text-center">
+            Sign in to manage your AI chatbots.
           </p>
-          <button 
-            onClick={handleLogin}
-            className="w-full py-3 px-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
-          >
-            <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
-            Sign in with Google
-          </button>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+              <input 
+                type="text" 
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="admin"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="••••••••"
+              />
+            </div>
+            {loginError && (
+              <p className="text-red-500 text-xs font-medium">{loginError}</p>
+            )}
+            <button 
+              type="submit"
+              className="w-full py-3 px-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+            >
+              Sign In
+            </button>
+          </form>
         </motion.div>
       </div>
     );
@@ -243,7 +276,9 @@ export default function App() {
 
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3 mb-4 px-2">
-            <img src={user.photoURL || ''} className="w-8 h-8 rounded-full" alt="Avatar" />
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+              A
+            </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">{user.displayName}</p>
               <p className="text-xs text-slate-500 truncate">{user.email}</p>
