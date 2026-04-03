@@ -1,0 +1,5 @@
+{
+  "name": "DoxeAI - Multi-tenant AI Chatbot SDK",
+  "description": "A multi-tenant AI Q&A chatbot system with an embeddable SDK, RAG-based AI engine, and admin dashboard for managing knowledge bases and chat logs.",
+  "requestFramePermissions": []
+}

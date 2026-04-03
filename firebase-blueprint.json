@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "workspaces": {
+      "title": "Workspace",
+      "description": "Represents a website or tenant using the chatbot SDK.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the workspace." },
+        "ownerId": { "type": "string", "description": "The UID of the user who owns this workspace." },
+        "domain": { "type": "string", "description": "The domain where the SDK will be embedded." },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "primaryColor": { "type": "string", "description": "Hex color for the chat bubble." },
+            "logoUrl": { "type": "string", "description": "URL for the chatbot logo." },
+            "welcomeMessage": { "type": "string", "description": "The first message shown to users." },
+            "botName": { "type": "string", "description": "The name of the bot." }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the workspace was created." }
+      },
+      "required": ["name", "ownerId", "createdAt"]
+    },
+    "knowledge_base": {
+      "title": "Knowledge Base Entry",
+      "description": "A piece of information used for RAG training.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string", "description": "The ID of the workspace this belongs to." },
+        "type": { "type": "string", "enum": ["url", "text", "pdf"], "description": "The type of content." },
+        "content": { "type": "string", "description": "The actual text content or extracted data." },
+        "source": { "type": "string", "description": "The source URL or file name." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the entry was added." }
+      },
+      "required": ["workspaceId", "type", "content", "createdAt"]
+    },
+    "chat_logs": {
+      "title": "Chat Log",
+      "description": "History of a conversation between a user and the bot.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string", "description": "The ID of the workspace." },
+        "userId": { "type": "string", "description": "A unique identifier for the end-user (session-based)." },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string", "enum": ["user", "assistant"] },
+              "content": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["workspaceId", "userId", "messages", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/workspaces/{workspaceId}": {
+      "schema": "workspaces",
+      "description": "Root collection for workspaces."
+    },
+    "/workspaces/{workspaceId}/knowledge_base/{entryId}": {
+      "schema": "knowledge_base",
+      "description": "Knowledge base entries for a specific workspace."
+    },
+    "/workspaces/{workspaceId}/chat_logs/{logId}": {
+      "schema": "chat_logs",
+      "description": "Chat history for a specific workspace."
+    }
+  }
+}

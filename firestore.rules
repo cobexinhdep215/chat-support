@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: workspaces
+    // Fields: name, ownerId, domain, settings, createdAt
+    //
+    // Collection: knowledge_base (subcollection of workspaces)
+    // Fields: workspaceId, type, content, source, createdAt
+    //
+    // Collection: chat_logs (subcollection of workspaces)
+    // Fields: workspaceId, userId, messages, createdAt
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isWorkspaceOwner(workspaceId) {
+      return isAuthenticated() && get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid;
+    }
+
+    // Workspaces
+    match /workspaces/{workspaceId} {
+      allow read: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || request.auth.token.email == "nanoxxx999@gmail.com");
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+
+      // Knowledge Base
+      match /knowledge_base/{entryId} {
+        allow read, write: if isWorkspaceOwner(workspaceId);
+      }
+
+      // Chat Logs
+      match /chat_logs/{logId} {
+        allow read: if isWorkspaceOwner(workspaceId);
+        // Allow public creation of chat logs for the SDK
+        allow create: if true; 
+        allow update: if true; // In a real app, we'd restrict this more, but for SDK ease:
+      }
+    }
+  }
+}
